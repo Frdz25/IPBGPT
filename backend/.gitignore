@@ -1,0 +1,16 @@
+# --- Security (CRITICAL) ---
+# Never upload API keys, passwords, or secrets!
+.env
+
+# --- Python ---
+__pycache__/
+
+# Virtual Environments
+venv/
+.venv/
+
+# Folders
+logs/
+
+# Docker
+Dockerfile
