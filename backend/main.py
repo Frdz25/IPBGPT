@@ -59,73 +59,12 @@ except Exception as e:
     print(f"FATAL ERROR: Failed to initialize Google Embeddings: {e}")
     embeddings = None
 
-# --- KONFIGURASI EMBEDDING (LOKAL) ---
-# Tentukan path lokal tempat model embedding disimpan
-"""
-embed_model = "Alibaba-NLP/gte-multilingual-base" 
-try:
-    embeddings = HuggingFaceEmbeddings(
-        model_name=embed_model,
-        model_kwargs={'trust_remote_code': True}
-    )
-except Exception as e:
-    print(f"FATAL ERROR: Failed to initialize Embeddings: {e}")
-    embeddings = None
-"""
-
-# # --- INISIALISASI LLM (GROQ) ---
-# def get_llm():
-#     """
-#     Menginisialisasi model LLM menggunakan Groq.
-#     """
-#     if not GROQ_API_KEY:
-#         raise ValueError("GROQ_API_KEY environment variable is not set.")
-
-#     llm = ChatGroq(
-#         groq_api_key=GROQ_API_KEY,
-#         model_name="llama-3.3-70b-versatile", # Model Groq pilihan Anda
-#         temperature=0.3,
-#         # --- PERBAIKAN KRITIS: Mengganti max_output_tokens menjadi max_tokens ---
-#         max_tokens=2048 
-#     )
-    
-#     return llm
-
-# # Panggil fungsi inisialisasi LLM
-# try:
-#     llm = get_llm()
-# except Exception as e:
-#     print(f"FATAL ERROR: Failed to initialize Groq LLM: {e}")
-#     llm = None
-
-
-# # --- INISIALISASI VECTOR STORE (CHROMA) ---
-# try:
-#     if embeddings is None:
-#          raise Exception("Embeddings not initialized.")
-         
-#     db2 = chromadb.PersistentClient(path="../vector_store")
-#     chroma_collection = db2.get_or_create_collection("LMITD")
-    
-#     # LangChain Chroma Vector Store
-#     vector_store = Chroma(
-#         client=db2,
-#         collection_name="LMITD",
-#         embedding_function=embeddings
-#     )
-    
-#     # LangChain Retriever (untuk mode Search dan Chat Umum)
-#     retriever = vector_store.as_retriever(search_kwargs={"k": 5})
-# except Exception as e:
-#     print(f"FATAL ERROR: Failed to initialize Chroma DB or Retriever: {e}")
-#     retriever = None
-
 # --- FUNGSI INISIALISASI (LOADER) ---
 def initialize_components():
     """Fungsi untuk memuat/memuat ulang model dan vector store."""
     global embeddings, llm, vector_store, retriever
     
-    print("🔄 Initializing/Reloading AI Components...")
+    print("Initializing/Reloading AI Components...")
 
     # 1. Init Embeddings
     try:
@@ -164,9 +103,9 @@ def initialize_components():
             )
             
             retriever = vector_store.as_retriever(search_kwargs={"k": 5})
-            print("✅ Vector Store & Retriever reloaded successfully.")
+            print("Vector Store & Retriever reloaded successfully.")
         else:
-            print("❌ Cannot load vector store: Embeddings not ready.")
+            print("Cannot load vector store: Embeddings not ready.")
 
     except Exception as e:
         print(f"Error init Vector Store: {e}")
@@ -202,10 +141,6 @@ async def reload_index_endpoint(request: Request):
     Endpoint rahasia untuk memicu reload vector store tanpa restart server.
     Bisa diamankan dengan mengecek header atau token sederhana.
     """
-    # Opsional: Cek security token sederhana agar tidak sembarang orang reload
-    # auth_header = request.headers.get("X-Reload-Token")
-    # if auth_header != "RAHASIA_DAPUR":
-    #    raise HTTPException(status_code=403, detail="Unauthorized")
 
     try:
         initialize_components()

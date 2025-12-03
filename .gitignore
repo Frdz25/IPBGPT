@@ -1,3 +1,5 @@
+.env
+
 # Folders
 temp_files/
 vector_store/
@@ -6,5 +8,6 @@ data_source/
 #Files
 cron_update.sh
 run_app.sh
-README.md
-docker-compose.yml
+startup.sh
+update_pipeline.sh
+deploy_update.sh

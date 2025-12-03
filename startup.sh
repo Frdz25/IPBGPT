@@ -17,7 +17,7 @@ echo "-> 1. Extracting Database..."
 cd "${REPO_DIR}"
 /usr/bin/python3 export_db.py 
 if [ $? -ne 0 ]; then
-    echo "❌ Database extraction failed. Aborting."
+    echo "Database extraction failed. Aborting."
     exit 1
 fi
 
@@ -91,3 +91,7 @@ else
 fi
 
 echo "[$(date)] --- UPDATE COMPLETE ---"
+
+# Jalankan ini dari terminal laptop Anda
+
+scp vector_store.zip ubuntu@repositorydev.ipb.ac.id:/home/g640122123

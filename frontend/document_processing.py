@@ -10,12 +10,10 @@ def upload_pdf(file):
     try:
         url = f"{URL_BASE}/upload-pdf/"
         
-        # --- PERBAIKAN PENTING ---
-        # 1. Reset pointer file ke awal (wajib untuk Streamlit)
+        # 1. Reset pointer file ke awal 
         file.seek(0)
         
         # 2. Gunakan format Tuple eksplisit: (filename, file_object, content_type)
-        # Ini memastikan header Content-Type terkirim dengan benar sebagai 'application/pdf'
         files = {'file': (file.name, file, "application/pdf")}
         
         response = requests.post(url, files=files)

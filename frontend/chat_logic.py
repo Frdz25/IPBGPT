@@ -39,7 +39,7 @@ def process_selected_documents_chat(prompt, chat_history):
         "query": prompt,
         "context": context,
         "chat_history": chat_history,
-        "session_id": st.session_state['session_id'] # Session ID tidak terlalu penting di sini, tapi dipertahankan
+        "session_id": st.session_state['session_id'] 
     }
     try:
         response = requests.post(url, json=data)

@@ -76,8 +76,6 @@ def display_sidebar():
                     st.session_state['related_document'] = related_docs
                     st.session_state['selected_document'] = []
                     st.success(f"Related Documents Found!")
-            else:
-                st.warning("Please enter a thesis title before searching.")
 
         display_retrieved_documents()
 

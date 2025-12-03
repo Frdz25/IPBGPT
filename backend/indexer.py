@@ -8,11 +8,10 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import DataFrameLoader
 from dotenv import load_dotenv
 
-# --- 1. Load Environment Variables ---
+# --- Load Environment Variables ---
 load_dotenv() 
 
-# --- KONFIGURASI DINAMIS (PENTING UNTUK SWAP FOLDER) ---
-# Default ke "../vector_store", tapi bisa diganti oleh script bash
+# --- KONFIGURASI ---
 DEFAULT_STORE_PATH = "../vector_store"
 VECTOR_STORE_PATH = os.getenv("VECTOR_STORE_TARGET", DEFAULT_STORE_PATH)
 
@@ -26,7 +25,7 @@ if not GOOGLE_API_KEY:
 
 def run_indexing():
     print(f"--- Starting Indexer ---")
-    print(f"Target Vector Store: {VECTOR_STORE_PATH}") # Cek output ini saat jalan
+    print(f"Target Vector Store: {VECTOR_STORE_PATH}") 
     
     if not os.path.exists(SOURCE_DATA_PATH):
         print(f"FATAL: Data source not found at {SOURCE_DATA_PATH}.")

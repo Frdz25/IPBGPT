@@ -9,7 +9,8 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 
-# --- PROMPT FUNCTION (VERSI DISEMPURNAKAN UNTUK RAG) ---
+# --- FUNGSI PROMPT ---
+
 def generate_academic_answer_prompt(chat_history: str, context: str, query: str, is_follow_up: bool = False) -> str:
     """
     Menghasilkan prompt yang ketat untuk mode RAG (dengan konteks dokumen).
@@ -52,13 +53,14 @@ Question: {query}
 """
     return prompt
 
-# --- FUNGSI UTILITY: PEMBERSIH RESPONS (DIPERKUAT) ---
+# --- FUNGSI PEMBERSIH RESPONS ---
+
 def clean_response(raw_response: str) -> str:
     """
     Membersihkan respons mentah dari LLM dengan mencari tag jawaban yang sangat eksplisit 
     dan menghapus semua teks prompt, konteks, dan karakter yang tidak diinginkan.
     """
-    answer_tag = "[JAWABAN]" # Tag baru yang lebih unik
+    answer_tag = "[JAWABAN]" 
     raw_text_lower = raw_response.lower()
     clean_text = raw_response
     
@@ -79,21 +81,23 @@ def clean_response(raw_response: str) -> str:
     # 4. Pembersihan Akhir: Hapus spasi dan quote yang tersisa di awal/akhir
     return clean_text.strip().strip("'").strip('"').strip()
 
-# --- DEFINISI FUNGSI PEMBERSIH ---
+# --- DEFINISI FUNGSI PEMBERSIH TEMP FOLDER ---
+
 def clear_temp_folder():
     """Fungsi sinkronus untuk menghapus folder."""
     temp_dir = "../temp_files"
     if os.path.exists(temp_dir):
         try:
             shutil.rmtree(temp_dir)
-            print(f"Cleaned up: {temp_dir}")
+            # print(f"Cleaned up: {temp_dir}")
         except Exception as e:
             print(f"Error deleting temp folder: {e}")
     
     # Buat ulang folder kosong agar siap dipakai
     os.makedirs(temp_dir, exist_ok=True)
 
-# --- FUNGSI BARU UNTUK PDF UPLOAD ---
+# --- FUNGSI PDF UPLOAD ---
+
 async def process_pdf_for_chat(file_path: str, embeddings):
     """Memproses PDF, membagi teks, dan membuat Chroma vector store sementara."""
     try:
@@ -126,7 +130,7 @@ async def process_pdf_for_chat(file_path: str, embeddings):
         raise HTTPException(status_code=500, detail=f"PDF Processing Error: {str(e)}")
 
 
-# --- FUNGSI CHAT UMUM (RAG TERINTEGRASI) ---
+# --- FUNGSI CHAT UMUM ---
 async def chat_general_query(chat_query: ChatQuery, llm, general_retriever):
     """
     Menangani permintaan chat umum (Chat Mode) dengan mengintegrasikan RAG
@@ -136,7 +140,6 @@ async def chat_general_query(chat_query: ChatQuery, llm, general_retriever):
     try:
         # 1. Retrieval (Ambil konteks dari database utama)
         relevant_docs = general_retriever.invoke(chat_query.query) 
-        # context = "\n\n".join([doc.page_content for doc in relevant_docs])
         context_list = []
         for doc in relevant_docs:
             # Ambil metadata yang sudah di-index di indexer.py
@@ -164,7 +167,7 @@ async def chat_general_query(chat_query: ChatQuery, llm, general_retriever):
         prompt = generate_academic_answer_prompt(chat_history, context, chat_query.query)
         response = llm.invoke(prompt)
         
-        # --- PEMBERSIHAN RESPONS KRITIS: Ambil .content dari AIMessage ---
+        # --- PEMBERSIHAN RESPONS ---
         final_response = clean_response(str(response.content))
 
         process_time = time.time() - start_time
@@ -176,7 +179,7 @@ async def chat_general_query(chat_query: ChatQuery, llm, general_retriever):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# --- FUNGSI BARU UNTUK CHAT DENGAN PDF ---
+# --- FUNGSI CHAT PDF ---
 
 async def chat_with_pdf_context(chat_query, llm, pdf_retriever):
     """Menangani chat dengan dokumen PDF yang diunggah menggunakan retriever LangChain."""
@@ -199,7 +202,7 @@ async def chat_with_pdf_context(chat_query, llm, pdf_retriever):
         prompt = generate_academic_answer_prompt(chat_history, context, chat_query.query)
         response = llm.invoke(prompt)
         
-        # --- PEMBERSIHAN RESPONS KRITIS: Ambil .content dari AIMessage ---
+        # --- PEMBERSIHAN RESPONS ---
         final_response = clean_response(str(response.content))
 
 
@@ -211,7 +214,7 @@ async def chat_with_pdf_context(chat_query, llm, pdf_retriever):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- FUNGSI get_related_documents (DIPERBAIKI MENGGUNAKAN METADATA) ---
+# --- FUNGSI get_related_documents ---
 
 async def get_related_documents(thesis: ThesisTitle, retriever):
     """Mengambil dokumen terkait dari Chroma DB menggunakan LangChain Retriever."""
@@ -244,6 +247,7 @@ async def get_related_documents(thesis: ThesisTitle, retriever):
         print(f"Error in get_related_documents: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# --- FUNGSI chat_with_document ---
 
 async def chat_with_document(chat_query: ChatQuery, llm):
     """Menangani chat dengan dokumen yang dipilih (Database) menggunakan LLM LangChain."""
@@ -256,9 +260,8 @@ async def chat_with_document(chat_query: ChatQuery, llm):
         # Menggunakan llm.invoke() LangChain
         response = llm.invoke(prompt)
 
-        # --- PEMBERSIHAN RESPONS KRITIS: Ambil .content dari AIMessage ---
+        # --- PEMBERSIHAN RESPONS ---
         final_response = clean_response(str(response.content))
-
 
         process_time = time.time() - start_time
         print(f"Chat with document request took {process_time:.4f} seconds")

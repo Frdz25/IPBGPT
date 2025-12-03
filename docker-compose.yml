@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  # --- BACKEND SERVICE ---
+  backend:
+    build: ./backend
+    container_name: ipb_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./vector_store:/vector_store
+    env_file:
+      - .env
+
+  # --- FRONTEND SERVICE ---
+  frontend:
+    build: ./frontend
+    container_name: ipb_frontend
+    restart: always
+    ports:
+      - "8501:8501"
+    environment:
+      - URL_BASE=http://backend:8000
+    depends_on:
+      - backend
