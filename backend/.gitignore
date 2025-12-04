@@ -11,6 +11,3 @@ venv/
 
 # Folders
 logs/
-
-# Docker
-Dockerfile
