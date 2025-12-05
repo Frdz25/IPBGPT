@@ -1,13 +1,7 @@
-# --- Security (CRITICAL) ---
-# Never upload API keys, passwords, or secrets!
+# Environment variables
 .env
 
-# --- Python ---
-__pycache__/
-
-# Virtual Environments
-venv/
-.venv/
-
 # Folders
+__pycache__/
+venv/
 logs/

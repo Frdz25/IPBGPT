@@ -162,16 +162,11 @@ async def upload_pdf(file: UploadFile = File(...)):
     file_path = os.path.join(temp_dir, file_id + ".pdf")
 
     try:
-        # with open(file_path, "wb") as buffer:
-        #     shutil.copyfileobj(file.file, buffer)
 
-        # pdf_retriever = await process_pdf_for_chat(file_path, embeddings)
-
-        content = await file.read()  # Baca konten secara async
+        content = await file.read() 
         with open(file_path, "wb") as buffer:
-            buffer.write(content)    # Tulis konten bersih ke file
-
-        # Reset pointer file (opsional, praktik baik jika file dipakai lagi nanti)
+            buffer.write(content)    
+            
         await file.seek(0) 
         
         pdf_retriever = await process_pdf_for_chat(file_path, embeddings)
@@ -237,17 +232,18 @@ async def api_chat_with_document(chat_query: ChatQuery):
     except Exception as e:
         print(f"Error in /chat/: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
+    
 @app.post("/related_documents/")
 async def api_get_related_documents(thesis: ThesisTitle):
     """
     Endpoint untuk mencari dokumen terkait berdasarkan judul tesis.
     """
-    if llm is None or retriever is None:
+    if vector_store is None: 
         raise HTTPException(status_code=503, detail="Server components not initialized.")
         
     try:
-        return await get_related_documents(thesis, retriever)
+        return await get_related_documents(thesis, vector_store)
+    
     except Exception as e:
         print(f"Error in /related_documents/: {e}")
         raise HTTPException(status_code=500, detail=str(e))

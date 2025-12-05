@@ -216,26 +216,56 @@ async def chat_with_pdf_context(chat_query, llm, pdf_retriever):
 
 # --- FUNGSI get_related_documents ---
 
-async def get_related_documents(thesis: ThesisTitle, retriever):
-    """Mengambil dokumen terkait dari Chroma DB menggunakan LangChain Retriever."""
+# async def get_related_documents(thesis: ThesisTitle, retriever):
+#     """Mengambil dokumen terkait dari Chroma DB menggunakan LangChain Retriever."""
+#     try:
+#         # Gunakan LangChain retriever
+#         related_documents = retriever.invoke(thesis.title)
+        
+#         results = []
+#         for doc in related_documents:
+#             # Mengambil data langsung dari .metadata karena sudah disimpan di indexer.py
+#             # dengan nama kolom asli: 'title', 'abstract', 'uri'
+            
+#             judul = doc.metadata.get("title", "Judul Tidak Ditemukan")
+#             url = doc.metadata.get("uri", "No URL")
+            
+#             # Abstrak diambil dari metadata atau page_content (jika page_content berisi abstrak)
+#             # Karena page_content di indexer.py adalah Judul + Abstrak, lebih baik ambil dari metadata.
+#             abstrak = doc.metadata.get("abstract", doc.page_content) 
+
+#             results.append({
+#                 # Pastikan key (judul, abstrak, url) sesuai dengan yang diharapkan frontend
+#                 "judul": judul.strip(), 
+#                 "abstrak": abstrak.strip(),
+#                 "url": url.strip()
+#             })
+
+#         return {"related_documents": results}
+#     except Exception as e:
+#         # Log error untuk debugging
+#         print(f"Error in get_related_documents: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
+
+async def get_related_documents(thesis: ThesisTitle, vector_store):
+    """Mengambil dokumen terkait dengan jumlah (k) yang dinamis."""
     try:
-        # Gunakan LangChain retriever
-        related_documents = retriever.invoke(thesis.title)
+        # --- PERUBAHAN LOGIKA ---
+        # Gunakan similarity_search langsung dari vector_store
+        # Ini memungkinkan kita memasukkan parameter 'k' dari input user (thesis.number)
+        related_documents = vector_store.similarity_search(
+            thesis.title, 
+            k=thesis.number
+        )
+        # ------------------------
         
         results = []
         for doc in related_documents:
-            # Mengambil data langsung dari .metadata karena sudah disimpan di indexer.py
-            # dengan nama kolom asli: 'title', 'abstract', 'uri'
-            
             judul = doc.metadata.get("title", "Judul Tidak Ditemukan")
             url = doc.metadata.get("uri", "No URL")
-            
-            # Abstrak diambil dari metadata atau page_content (jika page_content berisi abstrak)
-            # Karena page_content di indexer.py adalah Judul + Abstrak, lebih baik ambil dari metadata.
             abstrak = doc.metadata.get("abstract", doc.page_content) 
 
             results.append({
-                # Pastikan key (judul, abstrak, url) sesuai dengan yang diharapkan frontend
                 "judul": judul.strip(), 
                 "abstrak": abstrak.strip(),
                 "url": url.strip()
@@ -243,7 +273,6 @@ async def get_related_documents(thesis: ThesisTitle, retriever):
 
         return {"related_documents": results}
     except Exception as e:
-        # Log error untuk debugging
         print(f"Error in get_related_documents: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 

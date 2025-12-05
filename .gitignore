@@ -1,13 +1,11 @@
+# Environment variables
 .env
 
 # Folders
 temp_files/
 vector_store/
 data_source/
+sh_scripts/
 
-#Files
-cron_update.sh
-run_app.sh
-startup.sh
-update_pipeline.sh
-deploy_update.sh
+# README
+README.md

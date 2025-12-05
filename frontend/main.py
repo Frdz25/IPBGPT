@@ -6,7 +6,7 @@ def main():
 
     st.set_page_config(
         page_title="IPB-GPT",
-        page_icon="frontend/img/logo.png",
+        page_icon="/img/logo.png",
         layout="wide"
     )
 

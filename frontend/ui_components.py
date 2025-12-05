@@ -51,8 +51,15 @@ def display_sidebar():
     with st.sidebar:
         st.title("FIND RELATED RESEARCH📄")
         
-        text_input = st.text_input("Enter your undergraduate thesis Title 👇")
-        new_number = st.number_input('Insert a min number of the research', min_value=1, format='%i', value=st.session_state['number'])
+        text_input = st.text_input("Enter your undergraduate thesis Topic 👇")
+        
+        new_number = st.number_input(
+            'Max number of research to display', 
+            min_value=1, 
+            max_value=20, 
+            format='%i', 
+            value=st.session_state['number']
+        )
         
         search_button = st.button("Search for Related Documents")
 
@@ -107,7 +114,7 @@ def display_retrieved_documents():
 
     for i, doc in enumerate(docs):
         # Tambahkan pemisah visual yang lebih jelas
-        st.markdown(f"**--- Result {i+1} ---**") 
+        st.markdown(f"**Result {i+1}**") 
         
         # Tampilkan detail dokumen
         st.markdown(f"**Judul**: {doc['judul']}")

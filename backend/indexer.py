@@ -2,8 +2,8 @@ import pandas as pd
 import os
 import time
 import chromadb
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_chroma import Chroma
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import DataFrameLoader
 from dotenv import load_dotenv
@@ -54,7 +54,7 @@ def run_indexing():
         documents = loader.load()
 
         # Update Metadata
-        metadata_cols = ['title', 'abstract', 'keywords', 'uri'] 
+        metadata_cols = ['title', 'authors', 'abstract', 'keywords', 'uri'] 
         for i, doc in enumerate(documents):
             row_data = df.iloc[i]
             doc_metadata = {}
