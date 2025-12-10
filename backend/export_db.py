@@ -1,124 +1,99 @@
 import pandas as pd
+import os
 import psycopg2
 import paramiko 
-import os
+import sys 
 from sshtunnel import SSHTunnelForwarder 
 from dotenv import load_dotenv
 
-# Muat variabel lingkungan untuk kredensial DB
 load_dotenv()
 
-# --- KONFIGURASI DATABASE (Ambil dari .env) ---
-DB_HOST = os.environ.get("DB_HOST") # Host DB tujuan (target)
+# --- KONFIGURASI DATABASE ---
+DB_HOST = os.environ.get("DB_HOST") 
 DB_NAME = os.environ.get("DB_NAME")
 DB_USER = os.environ.get("DB_USER")
 DB_PASSWORD = os.environ.get("DB_PASSWORD")
 DB_PORT = int(os.environ.get("DB_PORT", "5432"))
 
-# --- KONFIGURASI SSH/TUNNEL ---
-SSH_HOST = os.environ.get("SSH_HOST")           # Bastion/Jump Host
+# --- KONFIGURASI SSH ---
+SSH_HOST = os.environ.get("SSH_HOST")      
 SSH_USER = os.environ.get("SSH_USER")
-SSH_PASSWORD = os.environ.get("SSH_PASSWORD") 
-SSH_KEY_PATH = os.environ.get("SSH_KEY_PATH")   # Path ke kunci SSH
+SSH_KEY_PATH = os.environ.get("SSH_KEY_PATH") 
+SSH_PASSWORD = os.environ.get("SSH_PASSWORD")
 SSH_PORT = int(os.environ.get("SSH_PORT", "22"))
 
-# --- KONFIGURASI FILE ---
+# --- KONFIGURASI FILE (DIPERBAIKI) ---
 CSV_FILENAME = "paper_metadata.csv"
-LOCAL_EXPORT_PATH = f"../data_source/{CSV_FILENAME}" 
-QUERY = "SELECT * FROM metadata_paper" 
+# Gunakan path relatif sederhana agar aman di Docker (/app/data_source)
+LOCAL_EXPORT_PATH = os.path.join("data_source", CSV_FILENAME)
 
-# Port Lokal yang akan digunakan untuk tunneling
-LOCAL_BIND_PORT = 6543 # Port lokal yang akan diteruskan (forwarded)
+QUERY = "SELECT * FROM metadata_paper;" 
+LOCAL_BIND_PORT = 6543 
 
-if not hasattr(paramiko, "DSSKey"):
-    class DSSKey:
-        pass
-    paramiko.DSSKey = DSSKey
-
-def extract_and_save_locally():
-    print("--- Starting Database Extraction with SSH Tunnel ---")
-    
-    # 1. Mulai SSH Tunnel
-    try:
-        # Pengecekan Kunci SSH
+def get_db_connection():
+    if SSH_HOST:
+        print(f"Mode: SSH Tunnel via {SSH_HOST}...")
         ssh_pkey = None
         if SSH_KEY_PATH and os.path.exists(SSH_KEY_PATH):
-            try:
-                ssh_pkey = paramiko.RSAKey.from_private_key_file(SSH_KEY_PATH)
-            except Exception as e:
-                print(f"WARNING: Failed to load SSH Key: {e}. Falling back to password.")
-                ssh_pkey = None
-        else:
-            # print("WARNING: SSH key path not found or empty. Using password auth.")
-            pass
-
-        with SSHTunnelForwarder(
+            ssh_pkey = paramiko.RSAKey.from_private_key_file(SSH_KEY_PATH)
+        
+        tunnel = SSHTunnelForwarder(
             (SSH_HOST, SSH_PORT), 
             ssh_username=SSH_USER,
-            ssh_pkey=ssh_pkey,        # Kunci (bisa None)
-            ssh_password=SSH_PASSWORD,      
+            ssh_pkey=ssh_pkey,
+            ssh_password=SSH_PASSWORD,
             remote_bind_address=(DB_HOST, DB_PORT),
             local_bind_address=('127.0.0.1', LOCAL_BIND_PORT)
-        ) as tunnel:
-            
-            print(f"SSH Tunnel opened. Local port: {tunnel.local_bind_port}")
-            
-            # 2. Ekstraksi Data dari Database melalui Tunnel
-            conn = psycopg2.connect(
-                host='127.0.0.1', # Koneksi ke port lokal
-                database=DB_NAME,
-                user=DB_USER,
-                password=DB_PASSWORD,
-                port=tunnel.local_bind_port # Gunakan port lokal yang diteruskan
-            )
-            
-            print("Connected. Starting data extraction in chunks...")
-            
-            # Tentukan ukuran chunk (misal 5000 baris per tarikan)
-            chunk_size = 5000
-            offset = 0
-            first_chunk = True
-            
-            # Gunakan iterator chunksize dari pandas
-            for chunk in pd.read_sql(QUERY, conn, chunksize=chunk_size):
-                # Mode 'w' untuk chunk pertama (write/overwrite), 'a' untuk selanjutnya (append)
-                mode = 'w' if first_chunk else 'a'
-                header = first_chunk # Tulis header hanya di awal
-                
-                # Simpan bertahap ke CSV
-                chunk.to_csv(LOCAL_EXPORT_PATH, index=False, mode=mode, header=header)
-                
-                offset += len(chunk)
-                print(f"Saved {len(chunk)} rows (Total: {offset})...")
-                first_chunk = False
-            
-            conn.close()
-            print(f"Successfully extracted {len(df)} rows.")
+        )
+        tunnel.start()
+        print(f"SSH Tunnel established.")
+        
+        conn = psycopg2.connect(
+            host='127.0.0.1',
+            database=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            port=tunnel.local_bind_port[1]
+        )
+        return conn, tunnel
+    else:
+        print(f"Mode: Direct Connection to {DB_HOST}...")
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            database=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            port=DB_PORT
+        )
+        return conn, None
 
-    except paramiko.ssh_exception.AuthenticationException:
-        print("FATAL ERROR: SSH Authentication failed. Check SSH key and user.")
-        return False
-    except paramiko.ssh_exception.NoValidConnectionsError as e:
-        print(f"FATAL ERROR: Could not connect to SSH host {SSH_HOST}. {e}")
-        return False
-    except Exception as e:
-        print(f"FATAL ERROR during database connection/extraction: {e}")
-        return False
-
-    # 3. Simpan DataFrame ke File CSV Lokal
+def extract_and_save_locally():
+    conn = None
+    tunnel = None
+    
     try:
-        print(f"Saving data to CSV locally at {LOCAL_EXPORT_PATH}...")
+        conn, tunnel = get_db_connection()
+        print("Connected to database.")
+        
+        df = pd.read_sql(QUERY, conn)
+        print(f"Extracted {len(df)} rows.")
+        
+        # Buat folder jika belum ada
         os.makedirs(os.path.dirname(LOCAL_EXPORT_PATH), exist_ok=True)
+        
         df.to_csv(LOCAL_EXPORT_PATH, index=False, encoding='utf-8', sep=',') 
-        print(f"Data saved locally to {LOCAL_EXPORT_PATH}")
+        print(f"Data saved to {LOCAL_EXPORT_PATH}")
         return True
 
     except Exception as e:
-        print(f"FATAL ERROR saving CSV: {e}")
+        print(f"FATAL ERROR: {e}")
         return False
+        
+    finally:
+        if conn: conn.close()
+        if tunnel: tunnel.stop()
 
 if __name__ == "__main__":
-    if not os.environ.get("SSH_HOST"):
-        print("ERROR: SSH_HOST is not configured in .env. Falling back to direct connection.")
-
-    extract_and_save_locally()
+    success = extract_and_save_locally()
+    if not success:
+        sys.exit(1)
