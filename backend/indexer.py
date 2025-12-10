@@ -24,7 +24,7 @@ SOURCE_DATA_PATH = os.path.join(BASE_DIR, "..", "data_source", "paper_metadata.c
 SOURCE_DATA_PATH = os.path.normpath(SOURCE_DATA_PATH)
 
 COLLECTION_NAME = "LMITD"
-CHECKPOINT_FILE = "indexing_checkpoint.txt"
+CHECKPOINT_FILE = os.path.join(BASE_DIR, "logs", "indexer_checkpoint.txt")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 if not GOOGLE_API_KEY:
@@ -123,7 +123,12 @@ def run_indexing():
                 
                 for attempt in range(max_retries):
                     try:
-                        vector_store.add_documents(documents=batch)
+                        ids = [f"doc-{i+j}" for j in range(len(batch))]
+                        vector_store._collection.add(
+                            documents=[d.page_content for d in batch],
+                            metadatas=[d.metadata for d in batch],
+                            ids=ids
+                        )
                         
                         next_index = min(i + batch_size, total_chunks)
                         with open(CHECKPOINT_FILE, "w") as f:
@@ -138,7 +143,7 @@ def run_indexing():
                             time.sleep(5 * (attempt + 1))
                         else:
                             print(f"SKIP batch {i}.")
-                            with open("failed_batches.log", "a") as f:
+                            with open("./logs/failed_batches.log", "a") as f:
                                 f.write(f"Batch {i}: {e}\n")
 
         except KeyboardInterrupt:
