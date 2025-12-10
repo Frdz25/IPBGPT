@@ -37,56 +37,56 @@ def get_db_connection():
     """
     Membuat koneksi database, otomatis memilih antara SSH Tunnel atau Direct.
     """
-    if SSH_HOST:
-        print(f"Mode: SSH Tunnel via {SSH_HOST}...")
+    # if SSH_HOST:
+    #     print(f"Mode: SSH Tunnel via {SSH_HOST}...")
         
-        ssh_pkey = None
-        if SSH_KEY_PATH and os.path.exists(SSH_KEY_PATH):
-            try:
-                # Coba load sebagai RSA
-                ssh_pkey = paramiko.RSAKey.from_private_key_file(SSH_KEY_PATH)
-            except Exception:
-                try:
-                    # Fallback ke Ed25519 jika bukan RSA
-                    ssh_pkey = paramiko.Ed25519Key.from_private_key_file(SSH_KEY_PATH)
-                except Exception as e:
-                    print(f"Warning: Gagal load SSH Key: {e}")
+    #     ssh_pkey = None
+    #     if SSH_KEY_PATH and os.path.exists(SSH_KEY_PATH):
+    #         try:
+    #             # Coba load sebagai RSA
+    #             ssh_pkey = paramiko.RSAKey.from_private_key_file(SSH_KEY_PATH)
+    #         except Exception:
+    #             try:
+    #                 # Fallback ke Ed25519 jika bukan RSA
+    #                 ssh_pkey = paramiko.Ed25519Key.from_private_key_file(SSH_KEY_PATH)
+    #             except Exception as e:
+    #                 print(f"Warning: Gagal load SSH Key: {e}")
         
-        # Setup Tunnel dengan Parameter Anti-Error DSSKey
-        tunnel = SSHTunnelForwarder(
-            (SSH_HOST, SSH_PORT), 
-            ssh_username=SSH_USER,
-            ssh_pkey=ssh_pkey,
-            ssh_password=SSH_PASSWORD,
-            remote_bind_address=(DB_HOST, DB_PORT),
-            local_bind_address=('127.0.0.1', LOCAL_BIND_PORT),
-            # --- FIX PENTING ---
-            # Mencegah sshtunnel mencari key lama di sistem yang menyebabkan error DSSKey
-            host_pkey_directories=[], 
-            ssh_private_key_password=None,
-        )
-        tunnel.start()
-        print(f"SSH Tunnel established.")
+    #     # Setup Tunnel dengan Parameter Anti-Error DSSKey
+    #     tunnel = SSHTunnelForwarder(
+    #         (SSH_HOST, SSH_PORT), 
+    #         ssh_username=SSH_USER,
+    #         ssh_pkey=ssh_pkey,
+    #         ssh_password=SSH_PASSWORD,
+    #         remote_bind_address=(DB_HOST, DB_PORT),
+    #         local_bind_address=('127.0.0.1', LOCAL_BIND_PORT),
+    #         # --- FIX PENTING ---
+    #         # Mencegah sshtunnel mencari key lama di sistem yang menyebabkan error DSSKey
+    #         host_pkey_directories=[], 
+    #         ssh_private_key_password=None,
+    #     )
+    #     tunnel.start()
+    #     print(f"SSH Tunnel established.")
         
-        conn = psycopg2.connect(
-            host='127.0.0.1',
-            database=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            port=tunnel.local_bind_port[1]
-        )
-        return conn, tunnel
+    #     conn = psycopg2.connect(
+    #         host='127.0.0.1',
+    #         database=DB_NAME,
+    #         user=DB_USER,
+    #         password=DB_PASSWORD,
+    #         port=tunnel.local_bind_port[1]
+    #     )
+    #     return conn, tunnel
 
-    else:
-        print(f"Mode: Direct Connection to {DB_HOST}...")
-        conn = psycopg2.connect(
-            host=DB_HOST,
-            database=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            port=DB_PORT
-        )
-        return conn, None
+    # else:
+    print(f"Mode: Direct Connection to {DB_HOST}...")
+    conn = psycopg2.connect(
+        host=DB_HOST,
+        database=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        port=DB_PORT
+    )
+    return conn, None
 
 def extract_and_save_locally():
     conn = None
