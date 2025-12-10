@@ -54,12 +54,10 @@ def extract_and_save_locally():
             pass
 
         with SSHTunnelForwarder(
-            (SSH_HOST, SSH_PORT), 
+            (SSH_HOST, SSH_PORT),
             ssh_username=SSH_USER,
-            ssh_pkey=ssh_pkey,        # Kunci (bisa None)
-            ssh_password=SSH_PASSWORD,      
-            remote_bind_address=(DB_HOST, DB_PORT),
-            local_bind_address=('127.0.0.1', LOCAL_BIND_PORT)
+            ssh_password=SSH_PASSWORD,
+            remote_bind_address=('127.0.0.1', 5432)
         ) as tunnel:
             
             print(f"SSH Tunnel opened. Local port: {tunnel.local_bind_port}")
