@@ -1,36 +1,32 @@
 import pandas as pd
-import chromadb
 import os
 import time
-import shutil
-import sys 
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+import chromadb
+import sys
 from langchain_chroma import Chroma
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import DataFrameLoader
 from dotenv import load_dotenv
 
-load_dotenv()
+# --- Load Environment Variables ---
+load_dotenv() 
 
-# --- KONFIGURASI DINAMIS ---
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_STORE_PATH = os.path.join(BASE_DIR, "vector_store")
+# --- KONFIGURASI ---
+DEFAULT_STORE_PATH = "../vector_store"
 VECTOR_STORE_PATH = os.getenv("VECTOR_STORE_TARGET", DEFAULT_STORE_PATH)
 
-# Sesuaikan dengan export_db.py
-SOURCE_DATA_PATH = os.path.join(BASE_DIR, "data_source", "paper_metadata.csv")
-
+SOURCE_DATA_PATH = "../data_source/paper_metadata.csv"
 COLLECTION_NAME = "LMITD"
-CHECKPOINT_FILE = "indexing_checkpoint.txt"
+CHECKPOINT_FILE = "./logs/indexing_checkpoint.txt"
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 if not GOOGLE_API_KEY:
-    raise ValueError("GOOGLE_API_KEY tidak ditemukan!")
+    raise ValueError("GOOGLE_API_KEY tidak ditemukan di file .env!")
 
 def run_indexing():
     print(f"--- Starting Indexer ---")
-    print(f"Target: {VECTOR_STORE_PATH}")
-    print(f"Source: {SOURCE_DATA_PATH}")
+    print(f"Target Vector Store: {VECTOR_STORE_PATH}") 
     
     if not os.path.exists(SOURCE_DATA_PATH):
         print(f"FATAL: Data source not found at {SOURCE_DATA_PATH}.")
@@ -44,10 +40,10 @@ def run_indexing():
             task_type="retrieval_document"
         )
         print("Embeddings initialized.")
-        
+
         # 2. Muat Data
         df = pd.read_csv(SOURCE_DATA_PATH)
-        print(f"Loaded {len(df)} rows.")
+        print(f"Loaded {len(df)} rows from CSV.")
         
         # 3. Buat Konten Utama
         df['page_content'] = (
@@ -59,7 +55,7 @@ def run_indexing():
         documents = loader.load()
 
         # Update Metadata
-        metadata_cols = ['title', 'authors', 'keywords', 'uri', 'abstract'] 
+        metadata_cols = ['title', 'authors', 'abstract', 'keywords', 'uri'] 
         for i, doc in enumerate(documents):
             row_data = df.iloc[i]
             doc_metadata = {}
@@ -69,7 +65,7 @@ def run_indexing():
             doc.metadata = doc_metadata
         
         print(f"Metadata attached to {len(documents)} docs.")
-        
+
         # --- LOGIKA CHECKPOINT ---
         start_index = 0
         if os.path.exists(CHECKPOINT_FILE):
@@ -81,34 +77,41 @@ def run_indexing():
                         print(f"Resuming from chunk index: {start_index}")
                 except:
                     start_index = 0
-
+        
         # 5. Split Dokumen
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200, length_function=len)
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000, 
+            chunk_overlap=200, 
+            length_function=len
+        )
         texts = text_splitter.split_documents(documents)
         print(f"Total chunks: {len(texts)}")
-        
+
         if start_index >= len(texts):
             print("All documents indexed!")
             return True
-        
+
         # 6. Inisialisasi Chroma
-        # Pastikan folder target dibuat
+        # Pastikan folder target dibuat jika belum ada
         os.makedirs(VECTOR_STORE_PATH, exist_ok=True)
         
         db_client = chromadb.PersistentClient(path=VECTOR_STORE_PATH)
-        
-        # Hanya hapus jika mulai dari 0 (Fresh Start)
+
         if start_index == 0:
             try:
                 db_client.delete_collection(name=COLLECTION_NAME)
-                print(f"Deleted existing collection: {COLLECTION_NAME} (Fresh Start)")
+                print(f"Deleted collection in TARGET: {COLLECTION_NAME} (Fresh Start)")
             except:
                 pass 
         else:
             print(f"Appending to existing collection (starting from {start_index}).")
-        
-        vector_store = Chroma(client=db_client, collection_name=COLLECTION_NAME, embedding_function=embeddings)
-        
+            
+        vector_store = Chroma(
+            client=db_client,
+            collection_name=COLLECTION_NAME,
+            embedding_function=embeddings
+        )
+
         # 7. Batch Processing
         batch_size = 100
         total_chunks = len(texts)
@@ -137,7 +140,7 @@ def run_indexing():
                             time.sleep(5 * (attempt + 1))
                         else:
                             print(f"SKIP batch {i}.")
-                            with open("failed_batches.log", "a") as f:
+                            with open("./logs/failed_batches.log", "a") as f:
                                 f.write(f"Batch {i}: {e}\n")
 
         except KeyboardInterrupt:
