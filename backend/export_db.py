@@ -24,11 +24,17 @@ SSH_KEY_PATH = os.environ.get("SSH_KEY_PATH")   # Path ke kunci SSH
 SSH_PORT = int(os.environ.get("SSH_PORT", "22"))
 
 # --- KONFIGURASI FILE ---
-CSV_FILENAME = "paper_metadata.csv"
-LOCAL_EXPORT_PATH = f"../data_source/{CSV_FILENAME}" 
-QUERY = "SELECT * FROM metadata_paper" 
+# BASE_DIR = /app (tempat script berada)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Port Lokal yang akan digunakan untuk tunneling
+# Target: /data_source (Naik satu level dari /app)
+# Di Docker, ini akan mengarah ke folder volume yang baru kita mount
+DATA_SOURCE_DIR = os.path.join(BASE_DIR, "..", "data_source")
+
+CSV_FILENAME = "paper_metadata.csv"
+LOCAL_EXPORT_PATH = os.path.join(DATA_SOURCE_DIR, CSV_FILENAME)
+
+QUERY = "SELECT * FROM metadata_paper" 
 LOCAL_BIND_PORT = 6543 # Port lokal yang akan diteruskan (forwarded)
 
 if not hasattr(paramiko, "DSSKey"):
@@ -75,24 +81,27 @@ def extract_and_save_locally():
             
             # Tentukan ukuran chunk (misal 5000 baris per tarikan)
             chunk_size = 5000
-            offset = 0
+            total_rows = 0
             first_chunk = True
             
             # Gunakan iterator chunksize dari pandas
             for chunk in pd.read_sql(QUERY, conn, chunksize=chunk_size):
-                # Mode 'w' untuk chunk pertama (write/overwrite), 'a' untuk selanjutnya (append)
-                mode = 'w' if first_chunk else 'a'
-                header = first_chunk # Tulis header hanya di awal
-                
-                # Simpan bertahap ke CSV
-                chunk.to_csv(LOCAL_EXPORT_PATH, index=False, mode=mode, header=header)
-                
-                offset += len(chunk)
-                print(f"Saved {len(chunk)} rows (Total: {offset})...")
+
+                chunk.to_csv(
+                    LOCAL_EXPORT_PATH,
+                    index=False,
+                    mode='w' if first_chunk else 'a',
+                    header=first_chunk
+                )
+
+                total_rows += len(chunk)
+                print(f"Saved chunk ({len(chunk)} rows), Total: {total_rows}")
+
                 first_chunk = False
-            
+
             conn.close()
-            print(f"Successfully extracted {len(df)} rows.")
+            print(f"Successfully extracted {total_rows} rows.")
+            return True
 
     except paramiko.ssh_exception.AuthenticationException:
         print("FATAL ERROR: SSH Authentication failed. Check SSH key and user.")
@@ -102,18 +111,6 @@ def extract_and_save_locally():
         return False
     except Exception as e:
         print(f"FATAL ERROR during database connection/extraction: {e}")
-        return False
-
-    # 3. Simpan DataFrame ke File CSV Lokal
-    try:
-        print(f"Saving data to CSV locally at {LOCAL_EXPORT_PATH}...")
-        os.makedirs(os.path.dirname(LOCAL_EXPORT_PATH), exist_ok=True)
-        df.to_csv(LOCAL_EXPORT_PATH, index=False, encoding='utf-8', sep=',') 
-        print(f"Data saved locally to {LOCAL_EXPORT_PATH}")
-        return True
-
-    except Exception as e:
-        print(f"FATAL ERROR saving CSV: {e}")
         return False
 
 if __name__ == "__main__":
