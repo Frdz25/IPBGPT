@@ -13,11 +13,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- KONFIGURASI DINAMIS ---
-DEFAULT_STORE_PATH = "../vector_store"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_STORE_PATH = os.path.join(BASE_DIR, "vector_store")
 VECTOR_STORE_PATH = os.getenv("VECTOR_STORE_TARGET", DEFAULT_STORE_PATH)
 
-# Sesuaikan dengan export_db.py (hapus ../)
-SOURCE_DATA_PATH = os.path.join("data_source", "paper_metadata.csv") 
+# Sesuaikan dengan export_db.py
+SOURCE_DATA_PATH = os.path.join(BASE_DIR, "data_source", "paper_metadata.csv")
 
 COLLECTION_NAME = "LMITD"
 CHECKPOINT_FILE = "indexing_checkpoint.txt"

@@ -23,9 +23,10 @@ SSH_PASSWORD = os.environ.get("SSH_PASSWORD")
 SSH_PORT = int(os.environ.get("SSH_PORT", "22"))
 
 # --- KONFIGURASI FILE (DIPERBAIKI) ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_SOURCE_DIR = os.path.join(BASE_DIR, "data_source")
 CSV_FILENAME = "paper_metadata.csv"
-# Gunakan path relatif sederhana agar aman di Docker (/app/data_source)
-LOCAL_EXPORT_PATH = os.path.join("data_source", CSV_FILENAME)
+LOCAL_EXPORT_PATH = os.path.join(DATA_SOURCE_DIR, CSV_FILENAME)
 
 QUERY = "SELECT * FROM metadata_paper;" 
 LOCAL_BIND_PORT = 6543 
@@ -72,6 +73,11 @@ def extract_and_save_locally():
     tunnel = None
     
     try:
+        # Pastikan folder tujuan ada
+        if not os.path.exists(DATA_SOURCE_DIR):
+            print(f"Creating directory: {DATA_SOURCE_DIR}")
+            os.makedirs(DATA_SOURCE_DIR, exist_ok=True)
+            
         conn, tunnel = get_db_connection()
         print("Connected to database.")
         
