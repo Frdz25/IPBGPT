@@ -2,10 +2,11 @@ import pandas as pd
 import os
 import psycopg2
 import paramiko 
-import sys 
+import sys
 from sshtunnel import SSHTunnelForwarder 
 from dotenv import load_dotenv
 
+# Muat variabel lingkungan
 load_dotenv()
 
 # --- KONFIGURASI DATABASE ---
@@ -15,42 +16,43 @@ DB_USER = os.environ.get("DB_USER")
 DB_PASSWORD = os.environ.get("DB_PASSWORD")
 DB_PORT = int(os.environ.get("DB_PORT", "5432"))
 
-# --- KONFIGURASI SSH ---
+# --- KONFIGURASI SSH (Opsional) ---
 SSH_HOST = os.environ.get("SSH_HOST")      
 SSH_USER = os.environ.get("SSH_USER")
 SSH_KEY_PATH = os.environ.get("SSH_KEY_PATH") 
 SSH_PASSWORD = os.environ.get("SSH_PASSWORD")
 SSH_PORT = int(os.environ.get("SSH_PORT", "22"))
 
-# --- KONFIGURASI FILE (DIPERBAIKI) ---
+# --- KONFIGURASI FILE ---
+# Path Absolut di dalam container (/app/data_source/...)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_SOURCE_DIR = os.path.join(BASE_DIR, "data_source")
 CSV_FILENAME = "paper_metadata.csv"
 LOCAL_EXPORT_PATH = os.path.join(DATA_SOURCE_DIR, CSV_FILENAME)
 
-QUERY = "SELECT * FROM metadata_paper;" 
+QUERY = "SELECT * FROM paper_metadata" 
 LOCAL_BIND_PORT = 6543 
 
 def get_db_connection():
     """
     Membuat koneksi database, otomatis memilih antara SSH Tunnel atau Direct.
     """
-    # 1. Mode SSH Tunnel (Jika SSH_HOST diatur)
     if SSH_HOST:
         print(f"Mode: SSH Tunnel via {SSH_HOST}...")
         
         ssh_pkey = None
         if SSH_KEY_PATH and os.path.exists(SSH_KEY_PATH):
-            # Coba load key (Support RSA & Ed25519)
             try:
+                # Coba load sebagai RSA
                 ssh_pkey = paramiko.RSAKey.from_private_key_file(SSH_KEY_PATH)
-            except:
+            except Exception:
                 try:
+                    # Fallback ke Ed25519 jika bukan RSA
                     ssh_pkey = paramiko.Ed25519Key.from_private_key_file(SSH_KEY_PATH)
                 except Exception as e:
                     print(f"Warning: Gagal load SSH Key: {e}")
         
-        # Setup Tunnel
+        # Setup Tunnel dengan Parameter Anti-Error DSSKey
         tunnel = SSHTunnelForwarder(
             (SSH_HOST, SSH_PORT), 
             ssh_username=SSH_USER,
@@ -58,14 +60,14 @@ def get_db_connection():
             ssh_password=SSH_PASSWORD,
             remote_bind_address=(DB_HOST, DB_PORT),
             local_bind_address=('127.0.0.1', LOCAL_BIND_PORT),
-            # Hindari error DSSKey dengan mengosongkan known_hosts lookup
+            # --- FIX PENTING ---
+            # Mencegah sshtunnel mencari key lama di sistem yang menyebabkan error DSSKey
             host_pkey_directories=[], 
             ssh_private_key_password=None,
         )
         tunnel.start()
         print(f"SSH Tunnel established.")
         
-        # Connect ke localhost port tunnel
         conn = psycopg2.connect(
             host='127.0.0.1',
             database=DB_NAME,
@@ -74,8 +76,7 @@ def get_db_connection():
             port=tunnel.local_bind_port[1]
         )
         return conn, tunnel
-    
-    # 2. Mode Direct Connection (Default di Server/Docker)
+
     else:
         print(f"Mode: Direct Connection to {DB_HOST}...")
         conn = psycopg2.connect(
@@ -90,25 +91,21 @@ def get_db_connection():
 def extract_and_save_locally():
     conn = None
     tunnel = None
-    
     try:
         # Pastikan folder tujuan ada
         if not os.path.exists(DATA_SOURCE_DIR):
             print(f"Creating directory: {DATA_SOURCE_DIR}")
             os.makedirs(DATA_SOURCE_DIR, exist_ok=True)
 
-        # Dapatkan koneksi
         conn, tunnel = get_db_connection()
-        print("Connected to database successfully.")
+        print("Connected to database.")
         
-        # Eksekusi Query
         print("Extracting data...")
         df = pd.read_sql(QUERY, conn)
         print(f"Extracted {len(df)} rows.")
         
-        # Simpan CSV
         df.to_csv(LOCAL_EXPORT_PATH, index=False, encoding='utf-8', sep=',') 
-        print(f"Data saved locally to {LOCAL_EXPORT_PATH}")
+        print(f"Data saved to {LOCAL_EXPORT_PATH}")
         return True
 
     except Exception as e:
