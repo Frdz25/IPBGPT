@@ -32,23 +32,40 @@ QUERY = "SELECT * FROM metadata_paper;"
 LOCAL_BIND_PORT = 6543 
 
 def get_db_connection():
+    """
+    Membuat koneksi database, otomatis memilih antara SSH Tunnel atau Direct.
+    """
+    # 1. Mode SSH Tunnel (Jika SSH_HOST diatur)
     if SSH_HOST:
         print(f"Mode: SSH Tunnel via {SSH_HOST}...")
+        
         ssh_pkey = None
         if SSH_KEY_PATH and os.path.exists(SSH_KEY_PATH):
-            ssh_pkey = paramiko.RSAKey.from_private_key_file(SSH_KEY_PATH)
+            # Coba load key (Support RSA & Ed25519)
+            try:
+                ssh_pkey = paramiko.RSAKey.from_private_key_file(SSH_KEY_PATH)
+            except:
+                try:
+                    ssh_pkey = paramiko.Ed25519Key.from_private_key_file(SSH_KEY_PATH)
+                except Exception as e:
+                    print(f"Warning: Gagal load SSH Key: {e}")
         
+        # Setup Tunnel
         tunnel = SSHTunnelForwarder(
             (SSH_HOST, SSH_PORT), 
             ssh_username=SSH_USER,
             ssh_pkey=ssh_pkey,
             ssh_password=SSH_PASSWORD,
             remote_bind_address=(DB_HOST, DB_PORT),
-            local_bind_address=('127.0.0.1', LOCAL_BIND_PORT)
+            local_bind_address=('127.0.0.1', LOCAL_BIND_PORT),
+            # Hindari error DSSKey dengan mengosongkan known_hosts lookup
+            host_pkey_directories=[], 
+            ssh_private_key_password=None,
         )
         tunnel.start()
         print(f"SSH Tunnel established.")
         
+        # Connect ke localhost port tunnel
         conn = psycopg2.connect(
             host='127.0.0.1',
             database=DB_NAME,
@@ -57,6 +74,8 @@ def get_db_connection():
             port=tunnel.local_bind_port[1]
         )
         return conn, tunnel
+    
+    # 2. Mode Direct Connection (Default di Server/Docker)
     else:
         print(f"Mode: Direct Connection to {DB_HOST}...")
         conn = psycopg2.connect(
@@ -77,18 +96,19 @@ def extract_and_save_locally():
         if not os.path.exists(DATA_SOURCE_DIR):
             print(f"Creating directory: {DATA_SOURCE_DIR}")
             os.makedirs(DATA_SOURCE_DIR, exist_ok=True)
-            
+
+        # Dapatkan koneksi
         conn, tunnel = get_db_connection()
-        print("Connected to database.")
+        print("Connected to database successfully.")
         
+        # Eksekusi Query
+        print("Extracting data...")
         df = pd.read_sql(QUERY, conn)
         print(f"Extracted {len(df)} rows.")
         
-        # Buat folder jika belum ada
-        os.makedirs(os.path.dirname(LOCAL_EXPORT_PATH), exist_ok=True)
-        
+        # Simpan CSV
         df.to_csv(LOCAL_EXPORT_PATH, index=False, encoding='utf-8', sep=',') 
-        print(f"Data saved to {LOCAL_EXPORT_PATH}")
+        print(f"Data saved locally to {LOCAL_EXPORT_PATH}")
         return True
 
     except Exception as e:
