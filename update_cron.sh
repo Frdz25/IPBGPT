@@ -1,7 +1,7 @@
 #!/bin/bash
 
 BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
-LOG_FILE="${BASE_DIR}/cron_update.log"
+LOG_FILE="${BASE_DIR}/update_cron.log"
 TARGET_SCRIPT="${BASE_DIR}/startup.sh"
 
 # Perintah Cron: Jalan jam 02:00 setiap hari

@@ -2,7 +2,7 @@
 
 # --- KONFIGURASI ---
 BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
-BACKEND_CONTAINER="ipb_backend" # Pastikan nama container sesuai docker ps
+BACKEND_CONTAINER="ipb_backend"
 LIVE_STORE_DIR="${BASE_DIR}/vector_store"
 TEMP_STORE_DIR="${BASE_DIR}/vector_store_temp"
 BACKUP_STORE_DIR="${BASE_DIR}/vector_store_backup"
