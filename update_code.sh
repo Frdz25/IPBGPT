@@ -12,7 +12,7 @@ git pull origin main
 echo "2. Re-building and restarting Docker containers..."
 # Menggunakan --build untuk memastikan perubahan kode python dipanggang ulang
 # Menggunakan --remove-orphans untuk membersihkan sampah
-sudo docker-compose up -d --build --remove-orphans
+sudo docker compose up -d --build --remove-orphans
 
 echo "3. Cleaning up unused images (save space)..."
 sudo docker image prune -f
