@@ -24,17 +24,11 @@ SSH_KEY_PATH = os.environ.get("SSH_KEY_PATH")   # Path ke kunci SSH
 SSH_PORT = int(os.environ.get("SSH_PORT", "22"))
 
 # --- KONFIGURASI FILE ---
-# BASE_DIR = /app (tempat script berada)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# Target: /data_source (Naik satu level dari /app)
-# Di Docker, ini akan mengarah ke folder volume yang baru kita mount
-DATA_SOURCE_DIR = os.path.join(BASE_DIR, "..", "data_source")
-
 CSV_FILENAME = "paper_metadata.csv"
-LOCAL_EXPORT_PATH = os.path.join(DATA_SOURCE_DIR, CSV_FILENAME)
-
+LOCAL_EXPORT_PATH = f"../data_source/{CSV_FILENAME}" 
 QUERY = "SELECT * FROM metadata_paper" 
+
+# Port Lokal yang akan digunakan untuk tunneling
 LOCAL_BIND_PORT = 6543 # Port lokal yang akan diteruskan (forwarded)
 
 if not hasattr(paramiko, "DSSKey"):

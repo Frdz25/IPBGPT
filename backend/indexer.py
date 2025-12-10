@@ -1,5 +1,6 @@
 import pandas as pd
 import chromadb
+import time
 import os
 import sys
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
@@ -14,7 +15,7 @@ load_dotenv()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Path Vector Store
-DEFAULT_STORE_PATH = os.path.join(BASE_DIR, "vector_store")
+DEFAULT_STORE_PATH = os.path.join(BASE_DIR, "..", "vector_store")
 VECTOR_STORE_PATH = os.getenv("VECTOR_STORE_TARGET", DEFAULT_STORE_PATH)
 
 # --- PATH DATA SOURCE ---
