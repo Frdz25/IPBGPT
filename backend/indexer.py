@@ -24,7 +24,7 @@ SOURCE_DATA_PATH = os.path.join(BASE_DIR, "..", "data_source", "paper_metadata.c
 SOURCE_DATA_PATH = os.path.normpath(SOURCE_DATA_PATH)
 
 COLLECTION_NAME = "LMITD"
-CHECKPOINT_FILE = "indexing_checkpoint.txt"
+CHECKPOINT_FILE = os.path.join(BASE_DIR, "logs", "indexer_checkpoint.txt")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 if not GOOGLE_API_KEY:
