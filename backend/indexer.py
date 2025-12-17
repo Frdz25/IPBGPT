@@ -135,7 +135,7 @@ def run_indexing():
                             f.write(str(next_index))
                         
                         print(f"Batch {i} - {next_index} saved.")
-                        time.sleep(0.5)
+                        time.sleep(0.1)
                         break 
                     except Exception as e:
                         print(f"Error batch {i} (Attempt {attempt+1}): {e}")
