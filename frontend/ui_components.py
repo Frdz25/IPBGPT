@@ -14,7 +14,7 @@ def initialize_session_state():
         'related_document': None,
         'selected_document': [],
         'document_chat': None,
-        'number': 3,
+        'number': 5,
         'prompt': None,
         'uploaded_file': None,
         'current_file': None,

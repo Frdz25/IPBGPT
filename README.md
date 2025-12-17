@@ -1,134 +1,180 @@
 <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/62059874-cac7-4e7e-ba8d-85459155ef4f" />
 
 
-# 🎓 IPB-GPT: Research Assistant
+# 🎓 IPB-GPT: Research Assistant Chatbot
 
-IPB-GPT adalah asisten riset cerdas berbasis Retrieval-Augmented Generation (RAG) yang dirancang untuk membantu mahasiswa dan peneliti IPB dalam mencari, menelaah, dan berinteraksi dengan literatur akademik (Skripsi/Tesis).
-
-Sistem ini menggabungkan kekuatan Llama 3 (via Groq) untuk kecepatan inferensi tinggi dan Google Generative AI Embeddings untuk pencarian semantik yang akurat.
+**IPB-GPT** adalah asisten riset berbasis AI yang dirancang untuk membantu mahasiswa IPB menemukan referensi skripsi dan jurnal yang relevan. Sistem ini menggunakan teknologi **RAG (Retrieval-Augmented Generation)** untuk menjawab pertanyaan akademis berdasarkan database penelitian internal maupun dokumen PDF yang diunggah pengguna.
 
 
-# ✨ Fitur Utama
+## ✨ Fitur Utama
 
-## 1. 🔍 Search & Chat (RAG Skripsi IPB)
+- **🔍 Semantic Search:** Pencarian skripsi berdasarkan makna/konteks (bukan hanya keyword) menggunakan Google Generative AI Embeddings.
 
-Pencarian Semantik: Mencari dokumen yang relevan bukan hanya berdasarkan kata kunci, tapi berdasarkan makna/konteks dari judul dan abstrak.
+- **🤖 Chat with Database:** Tanya jawab interaktif dengan seluruh database skripsi menggunakan LLM (Llama-3 via Groq).
 
-Database Besar: Terhubung dengan database metadata skripsi IPB yang di-indeks menggunakan ChromaDB.
-
-Kutipan Akurat: Jawaban AI dilengkapi dengan judul dan link URL ke repositori asli untuk validasi sumber.
-
-## 2. 📄 Chat with PDF (Analisis Dokumen Pribadi)
-
-Upload & Tanya: Pengguna dapat mengunggah file PDF jurnal/skripsi sendiri secara ad-hoc.
-
-Sesi Terisolasi: File PDF diproses secara in-memory dan terisolasi per sesi pengguna.
-
-Ringkasan Cepat: Minta AI merangkum, mencari metode, atau menjelaskan kesimpulan dari PDF tersebut.
+- **📄 Chat with PDF:** Unggah file PDF (jurnal/paper) dan diskusi secara spesifik mengenai konten file tersebut.
 
 
 
-# 🚀 Cara Menjalankan (Installation)
 
-Prasyarat
+## 🛠️ Persiapan Awal (Wajib)
 
-Docker & Docker Compose (Sangat Disarankan)
+Sebelum menjalankan di laptop maupun server, Anda wajib memiliki file konfigurasi env.
 
-Git
-
-API Key dari Groq dan Google AI Studio.
-
-### Metode 1: Menggunakan Docker
-
-Ini adalah cara termudah karena tidak perlu setup environment Python manual.
-
-Clone Repository:
-
+1. Clone repositori ini:
+```
 git clone https://github.com/Frdz25/IPBGPT.git
-
 cd IPBGPT
+```
 
+2. Buat file .env di direktori root (sejajar dengan docker-compose.yml):
+```
+# --- API KEYS (Wajib) ---
+GOOGLE_API_KEY=masukkan_google_api_key_disini
+GROQ_API_KEY=masukkan_groq_api_key_disini
 
-Setup Environment Variables:
-Buat file .env di root folder dan isi konfigurasi (lihat contoh di bawah).
+# --- DATABASE KAMPUS (Target) ---
+DB_HOST=localhost       # Biarkan localhost karena diakses via tunnel
+DB_NAME=nama_db_ipb
+DB_USER=username_db
+DB_PASSWORD=password_db
+DB_PORT=5432
 
-Jalankan Aplikasi:
+# --- SSH TUNNEL (Bastion Host) ---
+# Diperlukan untuk mengakses DB Kampus dari luar
+SSH_HOST=ip_address_server_ssh
+SSH_USER=username_ssh
+SSH_PASSWORD=password_ssh
+SSH_PORT=22
+# SSH_KEY_PATH=/path/to/private/key  # Opsional jika menggunakan key file
 
+# --- KONFIGURASI FRONTEND ---
+# Jika lokal/server docker, gunakan nama service backend
+URL_BASE=http://backend:8000
+```
+
+## 💻 Skenario 1: Menjalankan di Device Sendiri (Localhost)
+
+Gunakan cara ini jika Anda ingin mengedit kode atau menjalankan aplikasi di laptop pribadi (Windows/Mac/Linux).
+
+### Prasyarat
+
+- Docker Desktop sudah terinstall dan berjalan.
+
+### Langkah-langkah
+
+1. **Pastikan Koneksi:** Jika database kampus memerlukan VPN, pastikan VPN Anda sudah terkoneksi.
+
+2. **Export Database:** Lakukan export database dengan menjalankan:
+```
+python export_db
+```
+
+Hasil export dari database akan disimpan dalam bentuk file paper_metadata.csv pada folder data_source di direktori utama. Pastikan file .env sudah terkonfigurasi.
+
+3. **Buat Vector Store:** Dari paper_metadata.csv perlu kita ubah menjadi vector database dengan menjalankan:
+```
+python indexer.py
+```
+
+Proses ini dapat memakan waktu yang cukup lama dan juga menggunakan CPU dan Memory yang besar. Hasilnya adalah sebuah folder vector_store yang berada pada direktori utama. Folder ini data adalah yang akan digunakan untuk embedding search dan juga data yang akan digunakan oleh LLM.
+
+2. **Jalankan Docker Compose:**
+Buka terminal di folder project, lalu jalankan:
+```
 docker-compose up -d --build
+```
 
+3. **Akses Aplikasi:**
 
-Akses Aplikasi:
+**Frontend (Chat):** Buka browser ke http://localhost:8501
 
-Frontend (Chat): Buka http://localhost:8501
+**Backend (Swagger UI):** Buka browser ke http://localhost:8000/docs
 
-Backend (API Docs): Buka http://localhost:8000/docs
+**Portainer (Monitoring):** Buka browser ke http://localhost:9000
 
+4. **Menghentikan Aplikasi:**
+Jalankan kode dibawah ini:
+```
+docker-compose down.
+```
+**Catatan Lokal:** Jika koneksi SSH gagal (misal karena tidak ada VPN) ketika ekstraksi data, aplikasi mungkin error. Anda bisa meletakkan file dummy paper_metadata.csv di folder data_source/ secara manual jika tidak ingin menghubungkan ke DB asli.
 
+## ☁️ Skenario 2: Deployment di Server (VPS/Production)
 
-### Metode 2: Menjalankan Manual (Development)
+Gunakan cara ini untuk deployment stabil di server (Ubuntu/Debian) dengan fitur update otomatis.
 
-Jika ingin menjalankan tanpa Docker untuk keperluan coding/debugging.
+### Prasyarat
 
-Terminal 1 (Backend):
+- Server Linux dengan Docker & Docker Compose terinstall.
 
-cd backend
+- Akses Git ke repositori ini.
 
-python -m venv venv
+### Langkah-langkah Deployment
 
-source venv/bin/activate  # atau .\venv\Scripts\activate di Windows
+1. **Beri Izin Eksekusi pada Script:**
+Agar script maintenance bisa berjalan, ubah permission-nya:
+```
+chmod +x update_code.sh startup.sh update_cron.sh
+```
 
-pip install -r requirements.txt
+2. **Jalankan Script Instalasi:**
+Gunakan script update_code.sh untuk menarik kode terbaru, membangun image, dan menyalakan container:
+```
+./update_code.sh
+```
 
-uvicorn main:app --reload --port 8000
+3. **Inisialisasi Data Awal:**
+Jalankan script startup untuk menarik data dari DB kampus dan melakukan indexing pertama kali:
+```
+./startup.sh
+```
 
+Proses ini mungkin memakan waktu tergantung besarnya data.
 
-Terminal 2 (Frontend):
+4. **Aktifkan Jadwal Otomatis (Cron Job):**
+Agar data selalu update setiap malam (pukul 02:00) tanpa mematikan server:
+```
+./update_cron.sh
+```
 
-cd frontend
+### Cara Maintenance di Server
 
-python -m venv venv
+- **Update Kode Aplikasi:** Jika Anda melakukan push kode baru ke GitHub, cukup jalankan:
+```
+./update_code.sh
+```
 
-source venv/bin/activate  # atau .\venv\Scripts\activate di Windows
+- **Cek Log Update Data:**
+```
+tail -f update_cron.log
+```
 
-pip install -r requirements.txt
+## 🤖 Penjelasan Script Otomatisasi
 
-streamlit run main.py
+Folder root proyek ini berisi beberapa script BASH untuk mempermudah pengelolaan server:
 
+| Nama Script | Fungsi & Deskripsi |
+| - | - |
+| `startup.sh` | Zero-Downtime Data Pipeline. Script ini mengekstrak data dari DB, membuat index vektor baru di background, lalu menukar (swap) folder index lama dengan yang baru secara instan. User tidak akan merasakan server down saat update data terjadi. |
+| `update_code.sh` | Code Deployment. Melakukan git pull untuk mengambil kode Python terbaru, lalu melakukan docker compose up --build untuk menerapkan perubahan tersebut. |
+| `update_cron.sh` | Auto-Scheduler. Mendaftarkan startup.sh ke dalam sistem Cron Linux agar berjalan otomatis setiap hari pukul 02:00 pagi. |
 
-# 🔑 Konfigurasi (.env)
+## 📂 Struktur Folder
 
-Buat file bernama .env di root folder project. Jangan lupa isi kredensial berikut:
+    IPB-GPT/
+    ├── backend/                # Kode Python Backend (FastAPI)
+    │   ├── export_db.py        # Script ekstraksi DB via SSH
+    │   ├── indexer.py          # Script embedding & ChromaDB
+    │   └── ...
+    ├── frontend/               # Kode Python Frontend (Streamlit)
+    │   ├── ui_components.py    # Komponen Tampilan
+    │   └── ...
+    ├── data_source/            # Folder mounting untuk CSV mentah
+    ├── vector_store/           # Folder mounting untuk Database Vektor (Live)
+    ├── docker-compose.yml      # Konfigurasi Container
+    └── *.sh                    # Script maintenance
 
---- AI Provider Keys ---
-
-GROQ_API_KEY=...
-
-GOOGLE_API_KEY=...
-
-
-# 📂 Struktur Project
-
-    ipb-gpt/
-    ├── docker-compose.yml       # Konfigurasi Orchestration
-    ├── .env                     # File Konfigurasi (JANGAN DI-PUSH)
-    ├── vector_store/            # Folder Database Vektor (Chroma)
-    ├── backend/                 # API Server
-    │   ├── main.py              # Entry point FastAPI
-    │   ├── services.py          # Logika RAG & LLM
-    │   ├── indexer.py           # Skrip embedding data skripsi
-    │   ├── models.py            # Logika model
-    │   ├── export_db.py         # Export data dari database
-    │   └── requirements.txt
-    └── frontend/                # User Interface
-        ├── main.py              # Entry point Streamlit
-        ├── ui_components.py     # Komponen UI
-        ├── app_modes.py         # Mode aplikasi
-        ├── chat_logic.py        # Logika chat
-        ├── document_processing.py
-        └── requirements.txt
-
-
-
-📝 License
+📝 Lisensi
 
 Project ini dikembangkan untuk keperluan riset dan akademik.
