@@ -96,7 +96,7 @@ docker-compose up -d --build
 4. **Menghentikan Aplikasi:**
 Jalankan kode dibawah ini:
 ```
-docker-compose down.
+docker-compose down
 ```
 **Catatan Lokal:** Jika koneksi SSH gagal (misal karena tidak ada VPN) ketika ekstraksi data, aplikasi mungkin error. Anda bisa meletakkan file dummy paper_metadata.csv di folder data_source/ secara manual jika tidak ingin menghubungkan ke DB asli.
 
